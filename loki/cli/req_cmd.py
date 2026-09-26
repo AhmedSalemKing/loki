@@ -10,21 +10,17 @@ from rich.console import Console
 from rich.syntax import Syntax
 from rich.panel import Panel
 
-from loki.core.session.store import load_session, get_auth_header_for_host
+from loki.core.session.store import load_session, get_auth_header_for_host, resolve_host_for_path
 from loki.core.browser.persistent import connect_daemon, browser_fetch, NoBrowserSession, SameSiteNavigationError
 
 req_app = typer.Typer(name="req", help="Make authenticated requests via browser context")
 console = Console()
 
 
-def _build_url(session: dict, path: str, host_override: str | None) -> str:
-    # Prefer the ACTUAL resolved host (post-redirect, e.g. www.gamma.nl)
-    # over the typed host (gamma.nl) — mismatched origin = CORS "Failed to fetch".
-    host = host_override or session.get("resolved_host") or session.get("host", "")
+def _build_url(host: str, path: str) -> str:
     if path.startswith("http://") or path.startswith("https://"):
         return path
-    scheme = "https"
-    return f"{scheme}://{host}{path if path.startswith('/') else '/' + path}"
+    return f"https://{host}{path if path.startswith('/') else '/' + path}"
 
 
 def _parse_headers(header_list: list[str]) -> dict:
@@ -71,8 +67,10 @@ def _run_request(method: str, path: str, host: str | None,
         console.print(f"[red]✗ No active session for slot '{slot}' — run: loki session start --slot {slot} <host>[/red]")
         raise typer.Exit(1)
 
-    url = _build_url(session, path, host)
-    resolved_host = host or session.get("resolved_host") or session.get("host", "")
+    resolved_host, host_mode = resolve_host_for_path(session, path, host)
+    if host_mode == "auto":
+        console.print(f"[dim]Auto-detected host for this path: {resolved_host}[/dim]")
+    url = _build_url(resolved_host, path)
     extra_headers = get_auth_header_for_host(session, resolved_host)
     extra_headers.update(_parse_headers(header))
 

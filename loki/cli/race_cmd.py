@@ -11,7 +11,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from loki.core.session.store import load_session, get_auth_header_for_host
+from loki.core.session.store import load_session, get_auth_header_for_host, resolve_host_for_path
 from loki.core.browser.persistent import connect_daemon, browser_fetch_batch, NoBrowserSession, SameSiteNavigationError
 
 console = Console()
@@ -43,7 +43,9 @@ def race_cmd(
         console.print(f"[red]✗ No active session in slot '{slot}' — run: loki session start <host> --slot {slot}[/red]")
         raise typer.Exit(1)
 
-    host = host_override or session.get("resolved_host") or session.get("host", "")
+    host, host_mode = resolve_host_for_path(session, path, host_override)
+    if host_mode == "auto":
+        console.print(f"[dim]Auto-detected host for this path: {host}[/dim]")
     url = path if path.startswith("http") else f"https://{host}{path if path.startswith('/') else '/' + path}"
 
     extra_headers: dict[str, str] = {}

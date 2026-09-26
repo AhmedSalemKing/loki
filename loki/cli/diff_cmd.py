@@ -17,7 +17,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from loki.core.session.store import load_session, get_auth_header_for_host
+from loki.core.session.store import load_session, get_auth_header_for_host, resolve_host_for_path
 from loki.core.browser.persistent import connect_daemon, browser_fetch, NoBrowserSession, SameSiteNavigationError
 
 console = Console()
@@ -26,8 +26,7 @@ _PROTECTED = (401, 403, 404)
 _ALLOWED = (200, 201, 204)
 
 
-def _build_url(session: dict, path: str, host_override: str | None) -> str:
-    host = host_override or session.get("resolved_host") or session.get("host", "")
+def _build_url(host: str, path: str) -> str:
     if path.startswith("http://") or path.startswith("https://"):
         return path
     return f"https://{host}{path if path.startswith('/') else '/' + path}"
@@ -84,8 +83,10 @@ def diff_cmd(
         console.print(f"[red]✗ No session for slot '{slot_b}' — run: loki session start --slot {slot_b} <host>[/red]")
         raise typer.Exit(1)
 
-    url = _build_url(sa, path, host_override)
-    target_host = host_override or sa.get("resolved_host") or sa.get("host", "")
+    target_host, host_mode = resolve_host_for_path(sa, path, host_override)
+    if host_mode == "auto":
+        console.print(f"[dim]Auto-detected host for this path: {target_host}[/dim]")
+    url = _build_url(target_host, path)
     console.print(f"\n[bold red]☠ LOKI DIFF[/bold red] — [{method}] [dim]{url}[/dim]")
     console.print(f"[dim]slot-a: {slot_a}  |  slot-b: {slot_b}[/dim]\n")
 

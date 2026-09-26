@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
-from loki.core.session.store import load_session, get_auth_header_for_host
+from loki.core.session.store import load_session, get_auth_header_for_host, resolve_host_for_path
 from loki.core.browser.persistent import connect_daemon, browser_fetch_batch, NoBrowserSession, SameSiteNavigationError
 
 console = Console()
@@ -82,7 +82,13 @@ def run_fuzz(
         console.print(f"[red]✗ No active session for slot '{slot}' — run: loki session start --slot {slot} <host>[/red]")
         raise typer.Exit(1)
 
-    host = host_override or (session.get("resolved_host") or session.get("host", "") if session else "")
+    if session:
+        sample_path = FUZZ_MARK.sub("0", url_template)
+        host, host_mode = resolve_host_for_path(session, sample_path, host_override)
+        if host_mode == "auto":
+            console.print(f"[dim]Auto-detected host for this path: {host}[/dim]")
+    else:
+        host = host_override or ""
     payloads = _build_payloads(range_str, wordlist)
 
     # Build full URL for display

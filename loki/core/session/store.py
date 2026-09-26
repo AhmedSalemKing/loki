@@ -67,3 +67,37 @@ def get_auth_header_for_host(session: dict, host: str) -> dict:
     """
     auth_headers = session.get("auth_headers") or {}
     return dict(auth_headers.get(host, {}))
+
+
+def resolve_host_for_path(session: dict, path: str, host_override: str | None = None) -> tuple[str, str]:
+    """
+    Figure out which host a relative path actually belongs to, for
+    multi-host apps (SPA frontend + separate API backend on a different
+    domain — common on Vercel/Render/Railway deployments).
+
+    Returns (host, mode) where mode is one of:
+      "explicit" — caller passed --host, used as-is
+      "url"      — path was already a full URL, host extracted from it
+      "auto"     — matched exactly one host from previously discovered
+                   endpoints recorded for this path during crawl
+      "default"  — no match found (or ambiguous across multiple hosts),
+                   fell back to the session's own resolved host
+    Callers should print a note when mode == "auto" so the user knows
+    LOKI silently redirected the request to a different host than the
+    session's own — never guess silently without saying so.
+    """
+    if host_override:
+        return host_override, "explicit"
+    if path.startswith("http://") or path.startswith("https://"):
+        return urlparse(path).netloc, "url"
+
+    default_host = session.get("resolved_host") or session.get("host", "")
+    clean_path = path.split("?")[0]
+    endpoints = session.get("endpoints") or []
+    matches = {e.get("host") for e in endpoints if e.get("path") == clean_path and e.get("host")}
+    matches.discard(None)
+    matches.discard("")
+
+    if len(matches) == 1:
+        return matches.pop(), "auto"
+    return default_host, "default"
