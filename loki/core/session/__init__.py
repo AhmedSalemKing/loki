@@ -1,0 +1,1 @@
+"""LOKI session subsystem — persistent auth context between commands."""

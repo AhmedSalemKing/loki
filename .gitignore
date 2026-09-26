@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# LOKI runtime data — sessions, cookies, tokens, recorded flows, snapshots
+# (lives in ~/.loki/ by default, but ignore defensively in case it ever
+# gets created inside the repo)
+.loki/
+*.db
+*.sqlite3
+
+# Secrets / env
+.env
+.env.*
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "loki-security"
+version = "2.0.0"
+description = "LOKI v2 - Terminal-first browser security workspace for bug bounty"
+requires-python = ">=3.10"
+dependencies = [
+    "playwright>=1.40",
+    "aiosqlite>=0.19",
+    "typer[all]>=0.9",
+    "rich>=13.0",
+    "pydantic>=2.0",
+    "httpx>=0.25",
+    "python-dateutil>=2.8",
+    "tldextract>=3.4",
+]
+
+[project.scripts]
+loki = "loki.cli.main:app_entry"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["loki*"]
+
+[tool.setuptools.package-dir]
+"" = "."
