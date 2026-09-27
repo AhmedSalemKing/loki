@@ -49,7 +49,7 @@ BANNER = """
 [bold red]╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝[/bold red]
 [red]▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄[/red]
 [bold red]  ☠   L O C A L  O U T P U T  K E Y  I N T E R C E P T O R   ☠[/bold red]
-[red]  ▸ GHOST MODE ACTIVE  ▸ TARGET LOCKED  ▸ ZERO TRACE  ▸ v2.0[/red]
+[red]  ▸ SESSION ACTIVE  ▸ AUTHENTICATED  ▸ BROWSER-DRIVEN  ▸ v2.0[/red]
 [dim red]▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀[/dim red]"""
 
 
