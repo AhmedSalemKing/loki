@@ -940,6 +940,8 @@ def run_console() -> None:
             if line in ("clear", "cls"):
                 console.clear()
                 continue
+            if line in ("help", "h", "?"):
+                line = "--help"
 
             try:
                 args = shlex.split(line)
