@@ -30,23 +30,6 @@ def flow_record(
     slot: str = typer.Option("default", "--slot", help="Session slot whose browser to record from"),
 ):
     """Record a multi-step flow by performing it manually in the daemon's browser."""
-    mutating = [s for s in steps if s["method"] not in ("GET", "HEAD", "OPTIONS")]
-
-    if dry_run:
-        console.print(f"\n[cyan]DRY RUN — '{name}' has {len(steps)} step(s), {len(mutating)} of them mutating (POST/PUT/PATCH/DELETE):[/cyan]")
-        for i, s in enumerate(steps, 1):
-            tag = "[red](mutating)[/red]" if s["method"] not in ("GET", "HEAD", "OPTIONS") else ""
-            console.print(f"  {i}. {s['method']} {s['url']} {tag}")
-        raise typer.Exit(0)
-
-    if mutating and not yes:
-        console.print(f"\n[bold yellow]⚠ This flow has {len(mutating)} mutating request(s) (POST/PUT/PATCH/DELETE) "
-                      f"that will be REPLAYED FOR REAL, possibly multiple times (baseline + skip-step + replay + race).[/bold yellow]")
-        for s in mutating:
-            console.print(f"    {s['method']} {s['url']}")
-        if not typer.confirm("Continue and actually send these?"):
-            raise typer.Exit(0)
-
     session = load_session(slot=slot)
     if not session:
         console.print(f"[red]✗ No active session in slot '{slot}' — run: loki session start <host> --slot {slot}[/red]")
@@ -97,6 +80,23 @@ def flow_abuse(
         console.print("[yellow]⚠ Flow has fewer than 2 steps — nothing meaningful to abuse-test.[/yellow]")
         raise typer.Exit(0)
 
+    mutating = [s for s in steps if s["method"] not in ("GET", "HEAD", "OPTIONS")]
+
+    if dry_run:
+        console.print(f"\n[cyan]DRY RUN — '{name}' has {len(steps)} step(s), {len(mutating)} of them mutating (POST/PUT/PATCH/DELETE):[/cyan]")
+        for i, s in enumerate(steps, 1):
+            tag = "[red](mutating)[/red]" if s["method"] not in ("GET", "HEAD", "OPTIONS") else ""
+            console.print(f"  {i}. {s['method']} {s['url']} {tag}")
+        raise typer.Exit(0)
+
+    if mutating and not yes:
+        console.print(f"\n[bold yellow]⚠ This flow has {len(mutating)} mutating request(s) (POST/PUT/PATCH/DELETE) "
+                      f"that will be REPLAYED FOR REAL, possibly multiple times (baseline + skip-step + replay + race).[/bold yellow]")
+        for s in mutating:
+            console.print(f"    {s['method']} {s['url']}")
+        if not typer.confirm("Continue and actually send these?"):
+            raise typer.Exit(0)
+
     session = load_session(slot=slot)
     if not session:
         console.print(f"[red]✗ No active session in slot '{slot}'[/red]")
@@ -133,10 +133,18 @@ def flow_abuse(
         # 3. Replay the FIRST step again after the flow already completed
         await _replay(page, [steps[0]], "Replay step 1 again (already completed once above)")
 
-        # 4. Race the final step N times concurrently
-        if race_final > 1:
-            console.print(f"[cyan]--- Race final step x{race_final} ---[/cyan]")
-            final = steps[-1]
+        # 4. Race the LAST MUTATING step N times concurrently. Racing
+        #    literally steps[-1] was wrong: it is often an unrelated
+        #    trailing page-navigation fetch or a harmless GET, which
+        #    either gives a false "race condition" (GETs always "succeed")
+        #    or misses the real business-logic action entirely.
+        mutating_for_race = [s for s in steps if s["method"] not in ("GET", "HEAD", "OPTIONS")]
+        if race_final > 1 and not mutating_for_race:
+            console.print("[dim]No mutating (POST/PUT/PATCH/DELETE) step recorded in this flow — "
+                          "skipping race-final-step test (racing a GET has no meaningful side effect).[/dim]")
+        elif race_final > 1:
+            final = mutating_for_race[-1]
+            console.print(f"[cyan]--- Race last mutating step x{race_final}: {final['method']} {final['url']} ---[/cyan]")
             requests = [{"url": final["url"], "method": final["method"], "body": final.get("body"),
                          "headers": {k: v for k, v in final.get("headers", {}).items()
                                      if k.lower() not in ("cookie", "content-length", "host")}}
@@ -147,7 +155,7 @@ def flow_abuse(
                 console.print(f"  [{i}] -> {r.get('status')} ({r.get('size')}B)")
             console.print(f"  {success}/{race_final} succeeded")
             if success > 1:
-                console.print("[yellow]⚠ Final step succeeded more than once concurrently — possible race condition on this action.[/yellow]")
+                console.print("[yellow]⚠ This mutating action succeeded more than once concurrently — possible race condition.[/yellow]")
 
         await pw.stop()
 
