@@ -75,6 +75,7 @@ def run_fuzz(
     no_auth: bool = typer.Option(False, "--no-auth"),
     host_override: str | None = typer.Option(None, "--host", "-H"),
     slot: str = typer.Option("default", "--slot", help="Session slot to use"),
+    delay: float = typer.Option(0.0, "--delay", help="Seconds to wait between batches (be polite to the target / stay within program scope rate limits — e.g. 0.5-1.0 for programs that forbid high-traffic automated scanning)"),
 ):
     """Fuzz a URL with IDOR testing via browser fetch (bypasses WAF)."""
     session = load_session(slot)
@@ -134,6 +135,8 @@ def run_fuzz(
                         for p in chunk
                     ]
                     batch_results = await browser_fetch_batch(page, reqs, BATCH)
+                    if delay:
+                        await asyncio.sleep(delay)
 
                     for payload, res in zip(chunk, batch_results):
                         status = res.get("status", 0)

@@ -97,3 +97,20 @@ loki race /api/coupons/redeem --slot victim --count 10 --dry-run
 ## License
 
 MIT — see LICENSE.
+
+## Rate-limiting / staying in scope
+
+Programs that forbid high-traffic automated scanning need conservative
+timing:
+
+- `sweep` already waits `--delay` seconds between each endpoint request
+  (default 0.4s) and caps total endpoints tested with `--limit` (default
+  150).
+- `fuzz` waits `--delay` seconds between each batch of concurrent
+  requests (default 0.0s, i.e. off — set `--delay 0.5` to `1.0` for
+  rate-limited programs).
+- `race` and `flow abuse`'s race-final-step are inherently concurrent by
+  design (that's the point of a race condition test) — there is no safe
+  way to throttle a race test without breaking what it's testing for.
+  Only use them where the program's scope explicitly allows race-condition
+  testing, and keep `--count` as low as the test still needs.
